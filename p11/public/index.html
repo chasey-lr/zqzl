@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>我的待办清单</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="error-bar" id="errorBar"></div>
+
+  <div class="todo-container">
+    <div class="todo-header">
+      <h1>我的待办清单</h1>
+      <div class="user-info">
+        <span class="user-email" id="userEmail"></span>
+        <button class="logout-btn" id="logoutBtn">退出登录</button>
+      </div>
+    </div>
+
+    <div class="add-todo">
+      <div class="add-todo-form">
+        <input type="text" class="add-todo-input" id="todoInput" placeholder="输入新待办事项..." maxlength="100">
+        <button class="add-btn" id="addBtn">添加</button>
+      </div>
+    </div>
+
+    <div class="filter-section">
+      <label for="filterSelect">筛选：</label>
+      <select class="filter-select" id="filterSelect">
+        <option value="all">全部</option>
+        <option value="pending">待办</option>
+        <option value="completed">已完成</option>
+      </select>
+    </div>
+
+    <ul class="todo-list" id="todoList">
+    </ul>
+
+    <div class="empty-state" id="emptyState" style="display: none;">
+      <p>暂无待办事项</p>
+    </div>
+  </div>
+
+  <div class="todo-stats">
+    <div class="stat-item">
+      <div class="stat-number" id="totalCount">0</div>
+      <div class="stat-label">总事项数</div>
+    </div>
+    <div class="stat-item pending">
+      <div class="stat-number" id="pendingCount">0</div>
+      <div class="stat-label">待办事项</div>
+    </div>
+    <div class="stat-item completed">
+      <div class="stat-number" id="completedCount">0</div>
+      <div class="stat-label">已完成</div>
+    </div>
+  </div>
+
+  <script src="js/auth.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
