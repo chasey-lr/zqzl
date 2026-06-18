@@ -10,42 +10,65 @@ const urlRegex = /^https?:\/\/.+/i;
 router.get('/', async (req, res) => {
   try {
     const { category, search, page = 1, pageSize = 5 } = req.query;
-    let bookmarks = await BookmarkStore.findByUserId(req.userId);
-    bookmarks.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-    if (category && category !== 'all') {
-      bookmarks = bookmarks.filter(b => b.category === category);
+
+    const allBookmarks = await BookmarkStore.findByUserId(req.userId);
+    if (!Array.isArray(allBookmarks)) {
+      return res.status(500).json({ message: '获取书签列表失败' });
     }
-    if (search) {
-      const keyword = search.toLowerCase();
-      bookmarks = bookmarks.filter(b =>
-        b.title.toLowerCase().includes(keyword) ||
-        b.url.toLowerCase().includes(keyword)
-      );
+
+    const totalCount = allBookmarks.length;
+
+    const categories = totalCount > 0
+      ? [...new Set(allBookmarks.map(b => b.category).filter(Boolean))]
+      : [];
+
+    const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    let recent7DaysCount = 0;
+    let filtered = [];
+
+    if (totalCount > 0) {
+      const keyword = search ? search.toLowerCase() : '';
+      const filterCategory = category && category !== 'all';
+
+      for (let i = 0; i < totalCount; i++) {
+        const b = allBookmarks[i];
+
+        if (new Date(b.createdAt).getTime() >= sevenDaysAgo) {
+          recent7DaysCount++;
+        }
+
+        if (filterCategory && b.category !== category) continue;
+        if (keyword &&
+            !b.title.toLowerCase().includes(keyword) &&
+            !b.url.toLowerCase().includes(keyword)) continue;
+
+        filtered.push(b);
+      }
     }
-    const total = bookmarks.length;
-    const currentPage = Math.max(1, parseInt(page));
-    const size = Math.max(1, parseInt(pageSize));
-    const totalPages = Math.ceil(total / size);
+
+    const filteredTotal = filtered.length;
+    const currentPage = Math.max(1, parseInt(page) || 1);
+    const size = Math.max(1, Math.min(100, parseInt(pageSize) || 5));
+    const totalPages = filteredTotal > 0 ? Math.ceil(filteredTotal / size) : 0;
     const start = (currentPage - 1) * size;
-    const pagedBookmarks = bookmarks.slice(start, start + size);
-    const categories = [...new Set((await BookmarkStore.findByUserId(req.userId)).map(b => b.category).filter(Boolean))];
-    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-    const recentCount = (await BookmarkStore.findByUserId(req.userId)).filter(b => new Date(b.createdAt) >= sevenDaysAgo).length;
+    const pagedBookmarks = filteredTotal > 0 ? filtered.slice(start, start + size) : [];
+
     res.json({
       bookmarks: pagedBookmarks,
       pagination: {
-        total,
+        total: filteredTotal,
         page: currentPage,
         pageSize: size,
         totalPages
       },
       categories,
       stats: {
-        total: (await BookmarkStore.findByUserId(req.userId)).length,
-        recent7Days: recentCount
+        total: totalCount,
+        recent7Days: recent7DaysCount
       }
     });
   } catch (err) {
+    console.error('获取书签列表错误:', err);
     res.status(500).json({ message: '获取书签列表失败' });
   }
 });
@@ -74,6 +97,7 @@ router.post('/', async (req, res) => {
     });
     res.status(201).json({ message: '添加成功', bookmark });
   } catch (err) {
+    console.error('添加书签错误:', err);
     res.status(500).json({ message: '添加书签失败' });
   }
 });
@@ -107,6 +131,7 @@ router.put('/:id', async (req, res) => {
     const updated = await BookmarkStore.update(parseInt(id), updateData);
     res.json({ message: '更新成功', bookmark: updated });
   } catch (err) {
+    console.error('更新书签错误:', err);
     res.status(500).json({ message: '更新书签失败' });
   }
 });
@@ -124,6 +149,7 @@ router.delete('/:id', async (req, res) => {
     await BookmarkStore.delete(parseInt(id));
     res.json({ message: '删除成功' });
   } catch (err) {
+    console.error('删除书签错误:', err);
     res.status(500).json({ message: '删除书签失败' });
   }
 });

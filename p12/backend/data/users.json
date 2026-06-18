@@ -1,0 +1,9 @@
+[
+  {
+    "id": 1,
+    "email": "test@persist.com",
+    "password": "$2a$10$0wb25Z6wTrIcNOmPIy6nduzTRIhhoQ6ExlPTgSrT111flfmt7.F/O",
+    "createdAt": "2026-06-18T08:06:11.445Z",
+    "updatedAt": "2026-06-18T08:06:11.445Z"
+  }
+]

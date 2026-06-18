@@ -424,6 +424,13 @@ body {
   min-width: 36px;
 }
 
+.page-ellipsis {
+  color: #909399;
+  font-size: 14px;
+  padding: 0 4px;
+  user-select: none;
+}
+
 .stats-bar {
   display: flex;
   align-items: center;
