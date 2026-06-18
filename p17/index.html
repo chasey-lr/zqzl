@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>星球殖民 - 回合制策略游戏</title>
+    <link rel="stylesheet" href="./css/style.css">
+</head>
+<body>
+    <div id="game-container">
+        <header id="game-header">
+            <h1>✦ 星球殖民 ✦</h1>
+            <div id="difficulty-container">
+                <label for="difficulty-select">AI难度：</label>
+                <select id="difficulty-select">
+                    <option value="easy">简单</option>
+                    <option value="hard" selected>困难</option>
+                </select>
+            </div>
+        </header>
+
+        <div id="main-content">
+            <aside id="info-panel">
+                <div class="info-card player-info">
+                    <h3>🔵 玩家</h3>
+                    <p>单位数：<span id="player-units">0</span></p>
+                    <p>控制格子：<span id="player-tiles">0</span></p>
+                </div>
+                <div class="info-card turn-info">
+                    <h3>回合信息</h3>
+                    <p>第 <span id="turn-number">1</span> 回合</p>
+                    <p>当前：<span id="current-player">玩家</span></p>
+                </div>
+                <div class="info-card ai-info">
+                    <h3>🟠 AI</h3>
+                    <p>单位数：<span id="ai-units">0</span></p>
+                    <p>控制格子：<span id="ai-tiles">0</span></p>
+                </div>
+                <div id="action-buttons">
+                    <button id="btn-develop" disabled>⚒ 开发</button>
+                    <button id="btn-build" disabled>🚀 建造</button>
+                    <button id="btn-end-turn">⏭ 结束回合 (空格)</button>
+                </div>
+            </aside>
+
+            <div id="game-map-container">
+                <div id="game-map"></div>
+            </div>
+
+            <aside id="log-panel">
+                <h3>📜 游戏日志</h3>
+                <div id="game-log"></div>
+            </aside>
+        </div>
+    </div>
+
+    <div id="modal-overlay" class="hidden">
+        <div id="modal-content">
+            <h2 id="modal-title">提示</h2>
+            <p id="modal-message">消息内容</p>
+            <div id="modal-buttons">
+                <button id="modal-confirm" class="modal-btn">确定</button>
+                <button id="modal-cancel" class="modal-btn hidden">取消</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="tile-tooltip" class="hidden">
+        <p id="tooltip-owner">归属：无主</p>
+        <p id="tooltip-output">产出：0</p>
+        <p id="tooltip-unit">单位：无</p>
+    </div>
+
+    <script type="module" src="./js/main.js"></script>
+</body>
+</html>
