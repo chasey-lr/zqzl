@@ -9,7 +9,8 @@ const {
   getLinkById,
   updateLink,
   deleteLink,
-  findDuplicateLongUrl
+  findDuplicateLongUrl,
+  BASE_URL
 } = require('../store/linkStore');
 
 function isValidUrl(url) {
@@ -36,7 +37,7 @@ function enrichLink(link) {
   return {
     ...link,
     status: getLinkStatus(link),
-    shortUrl: `http://localhost:3000/s/${link.shortCode}`
+    shortUrl: `${BASE_URL}/s/${link.shortCode}`
   };
 }
 
@@ -74,6 +75,7 @@ router.post('/', authMiddleware, (req, res) => {
   }
   
   const link = createLink(userId, longUrl, finalShortCode, expiresAt);
+  console.log(`[Links] 短链接创建成功: ${finalShortCode} -> ${longUrl} (用户: ${userId})`);
   res.json({ success: true, link: enrichLink(link) });
 });
 
@@ -161,6 +163,7 @@ router.put('/:id', authMiddleware, (req, res) => {
   if (expiresAt !== undefined) updates.expiresAt = expiresAt;
   
   const updatedLink = updateLink(id, updates);
+  console.log(`[Links] 短链接已更新: ${updatedLink.shortCode}`);
   res.json({ success: true, link: enrichLink(updatedLink) });
 });
 
@@ -174,6 +177,7 @@ router.delete('/:id', authMiddleware, (req, res) => {
   }
   
   deleteLink(id);
+  console.log(`[Links] 短链接已删除: ${link.shortCode}`);
   res.json({ success: true });
 });
 

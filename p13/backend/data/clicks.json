@@ -1,0 +1,26 @@
+[
+  {
+    "id": "723899e1-a814-4c83-bb7b-33a0874ae8da",
+    "linkId": "4cccf940-3390-4a7e-ab7b-70f47a8f1a4f",
+    "ip": "127.0.0.1",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+    "device": "PC",
+    "country": "本地",
+    "region": "localhost",
+    "city": "本地开发",
+    "regionDisplay": "本地开发",
+    "createdAt": "2026-06-18T09:10:23.866Z"
+  },
+  {
+    "id": "a770a8ac-a54f-4e8f-8871-0cfc103d31db",
+    "linkId": "4cccf940-3390-4a7e-ab7b-70f47a8f1a4f",
+    "ip": "127.0.0.1",
+    "userAgent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X)",
+    "device": "Mobile",
+    "country": "本地",
+    "region": "localhost",
+    "city": "本地开发",
+    "regionDisplay": "本地开发",
+    "createdAt": "2026-06-18T09:10:23.873Z"
+  }
+]

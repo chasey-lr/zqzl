@@ -1,19 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { authMiddleware } = require('../store/authStore');
-const { getLinkById, getClicksByLink } = require('../store/linkStore');
-
-function getDeviceFromUA(userAgent) {
-  if (/Mobile|Android|iPhone|iPad|iPod/i.test(userAgent)) {
-    return 'Mobile';
-  }
-  return 'PC';
-}
-
-function getRandomRegion() {
-  const provinces = ['北京', '上海', '广东', '江苏', '浙江', '四川', '湖北', '山东', '河南', '福建', '陕西', '湖南', '重庆', '天津', '辽宁'];
-  return provinces[Math.floor(Math.random() * provinces.length)];
-}
+const { getLinkById, getClicksByLink, getDeviceFromUA, parseIpRegion, formatRegionDisplay } = require('../store/linkStore');
 
 router.get('/:linkId', authMiddleware, (req, res) => {
   const { linkId } = req.params;
@@ -47,15 +35,27 @@ router.get('/:linkId', authMiddleware, (req, res) => {
     }
   });
   
-  const deviceStats = { PC: 0, Mobile: 0 };
+  const deviceStats = { PC: 0, Mobile: 0, Unknown: 0 };
   const regionStats = {};
+  const countryStats = {};
   
   clicks.forEach(click => {
-    const device = getDeviceFromUA(click.userAgent);
-    deviceStats[device]++;
+    const device = click.device || getDeviceFromUA(click.userAgent);
+    if (device === 'PC' || device === 'Mobile') {
+      deviceStats[device]++;
+    } else {
+      deviceStats.Unknown++;
+    }
     
-    const region = click.region || getRandomRegion();
-    regionStats[region] = (regionStats[region] || 0) + 1;
+    const regionDisplay = click.regionDisplay || (() => {
+      const geo = parseIpRegion(click.ip);
+      return formatRegionDisplay(geo);
+    })();
+    regionStats[regionDisplay] = (regionStats[regionDisplay] || 0) + 1;
+    
+    if (click.country && click.country !== '未知') {
+      countryStats[click.country] = (countryStats[click.country] || 0) + 1;
+    }
   });
   
   res.json({
@@ -65,12 +65,16 @@ router.get('/:linkId', authMiddleware, (req, res) => {
       last7Days,
       deviceStats,
       regionStats,
-      recentClicks: clicks.slice(-10).reverse().map(c => ({
+      countryStats,
+      recentClicks: clicks.slice(-20).reverse().map(c => ({
         createdAt: c.createdAt,
-        device: getDeviceFromUA(c.userAgent),
-        region: c.region || getRandomRegion(),
+        device: c.device || getDeviceFromUA(c.userAgent),
+        region: c.regionDisplay || '未知',
+        country: c.country || '未知',
+        city: c.city || '未知',
         ip: c.ip
-      }))
+      })),
+      dataNote: '地区数据基于GeoIP-lite离线库解析，本地IP显示为"本地开发"，公网IP可能存在精度偏差'
     }
   });
 });

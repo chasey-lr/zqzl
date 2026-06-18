@@ -1,16 +1,28 @@
+require('dotenv').config();
 const jwt = require('jsonwebtoken');
-const SECRET_KEY = 'shortlink-secret-key-2024';
+const { PersistentMap, PersistentArray } = require('./persistentStore');
 
-const users = new Map();
+const JWT_SECRET = process.env.JWT_SECRET;
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
+
+if (!JWT_SECRET || JWT_SECRET.includes('please_change') || JWT_SECRET.includes('change_me')) {
+  console.warn('\n============================================');
+  console.warn('⚠️  警告：JWT_SECRET 使用了默认或不安全的值！');
+  console.warn('   请在 .env 文件中设置强随机密钥。');
+  console.warn('   生产环境必须修改此配置！');
+  console.warn('============================================\n');
+}
+
+const users = new PersistentMap('users.json');
 const verificationCodes = new Map();
 
 function generateToken(userId, email) {
-  return jwt.sign({ userId, email }, SECRET_KEY, { expiresIn: '7d' });
+  return jwt.sign({ userId, email }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
 }
 
 function verifyToken(token) {
   try {
-    return jwt.verify(token, SECRET_KEY);
+    return jwt.verify(token, JWT_SECRET);
   } catch (err) {
     return null;
   }
@@ -29,11 +41,21 @@ function authMiddleware(req, res, next) {
   next();
 }
 
+function findUserByEmail(email) {
+  for (const user of users.values()) {
+    if (user.email === email) {
+      return user;
+    }
+  }
+  return null;
+}
+
 module.exports = {
   users,
   verificationCodes,
   generateToken,
   verifyToken,
   authMiddleware,
-  SECRET_KEY
+  findUserByEmail,
+  JWT_SECRET
 };
