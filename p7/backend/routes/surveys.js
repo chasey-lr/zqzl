@@ -36,9 +36,13 @@ router.get('/', authenticate, async (req, res) => {
   const offset = (Number(page) - 1) * Number(pageSize);
 
   let sql = `
-    SELECT s.*, COUNT(DISTINCT r.id) as response_count
+    SELECT s.*, COALESCE(rc.response_count, 0) as response_count
     FROM surveys s
-    LEFT JOIN responses r ON s.id = r.survey_id
+    LEFT JOIN (
+      SELECT survey_id, COUNT(*) as response_count
+      FROM responses
+      GROUP BY survey_id
+    ) rc ON s.id = rc.survey_id
     WHERE s.user_id = ?
   `;
   const params = [req.user.id];
@@ -53,7 +57,7 @@ router.get('/', authenticate, async (req, res) => {
     params.push(`%${search}%`);
   }
 
-  sql += ' GROUP BY s.id ORDER BY s.created_at DESC LIMIT ? OFFSET ?';
+  sql += ' ORDER BY s.created_at DESC LIMIT ? OFFSET ?';
   params.push(Number(pageSize), offset);
 
   try {
@@ -96,12 +100,15 @@ router.get('/public', async (req, res) => {
   const sql = `
     SELECT s.id, s.title, s.description, s.status, s.created_at, s.published_at,
            u.email as creator_email,
-           COUNT(DISTINCT r.id) as response_count
+           COALESCE(rc.response_count, 0) as response_count
     FROM surveys s
-    LEFT JOIN responses r ON s.id = r.survey_id
     LEFT JOIN users u ON s.user_id = u.id
+    LEFT JOIN (
+      SELECT survey_id, COUNT(*) as response_count
+      FROM responses
+      GROUP BY survey_id
+    ) rc ON s.id = rc.survey_id
     WHERE s.status = 'open'
-    GROUP BY s.id
     ORDER BY s.published_at DESC
     LIMIT ? OFFSET ?
   `;
@@ -408,6 +415,9 @@ router.delete('/:id', authenticate, async (req, res) => {
       return res.status(404).json({ error: '问卷不存在' });
     }
 
+    await runAsync('DELETE FROM answers WHERE response_id IN (SELECT id FROM responses WHERE survey_id = ?)', [survey.id]);
+    await runAsync('DELETE FROM responses WHERE survey_id = ?', [survey.id]);
+    await runAsync('DELETE FROM questions WHERE survey_id = ?', [survey.id]);
     await runAsync('DELETE FROM surveys WHERE id = ?', [survey.id]);
 
     res.json({ message: '问卷删除成功' });

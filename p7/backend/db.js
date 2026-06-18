@@ -53,16 +53,30 @@ const runAsync = async (sql, params = []) => {
   if (!db) await init();
   try {
     const stmt = db.prepare(sql);
-    stmt.run(params);
+    if (params && params.length > 0) {
+      stmt.bind(params);
+    }
+    stmt.step();
     stmt.free();
 
-    const idResult = db.exec('SELECT last_insert_rowid() as id')[0]?.values[0]?.[0];
-    const cntResult = db.exec('SELECT changes() as cnt')[0]?.values[0]?.[0];
-    const lastID = typeof idResult === 'number' && idResult > 0 ? idResult : (db.exec('SELECT COALESCE(MAX(id), 0) as max FROM (SELECT 1 as id)')[0]?.values[0]?.[0] || 0);
+    let lastID = 0;
+    let changes = 0;
 
-    saveDB();
+    try {
+      const idResult = db.exec('SELECT last_insert_rowid() as id');
+      if (idResult && idResult[0] && idResult[0].values && idResult[0].values[0]) {
+        lastID = idResult[0].values[0][0] || 0;
+      }
+    } catch (e) {}
 
-    const finalID = (() => {
+    try {
+      const cntResult = db.exec('SELECT changes() as cnt');
+      if (cntResult && cntResult[0] && cntResult[0].values && cntResult[0].values[0]) {
+        changes = cntResult[0].values[0][0] || 0;
+      }
+    } catch (e) {}
+
+    if (lastID === 0) {
       try {
         const lower = sql.toLowerCase().trim();
         if (lower.startsWith('insert into')) {
@@ -70,15 +84,17 @@ const runAsync = async (sql, params = []) => {
           if (match) {
             const table = match[1];
             const maxRow = db.exec(`SELECT COALESCE(MAX(id), 0) as mx FROM "${table}"`);
-            const mx = maxRow[0]?.values?.[0]?.[0];
-            if (mx && mx > 0) return mx;
+            if (maxRow && maxRow[0] && maxRow[0].values && maxRow[0].values[0]) {
+              const mx = maxRow[0].values[0][0];
+              if (mx > 0) lastID = mx;
+            }
           }
         }
-      } catch(e) {}
-      return idResult || 0;
-    })();
+      } catch (e) {}
+    }
 
-    return { lastID: finalID, changes: cntResult || 0 };
+    saveDB();
+    return { lastID, changes };
   } catch (err) {
     throw err;
   }
@@ -88,9 +104,15 @@ const getAsync = async (sql, params = []) => {
   if (!db) await init();
   try {
     const stmt = db.prepare(sql);
-    const result = stmt.getAsObject(params);
+    if (params && params.length > 0) {
+      stmt.bind(params);
+    }
+    let result;
+    if (stmt.step()) {
+      result = stmt.getAsObject();
+    }
     stmt.free();
-    return Object.keys(result).length > 0 ? result : undefined;
+    return result || undefined;
   } catch (err) {
     throw err;
   }
@@ -100,6 +122,9 @@ const allAsync = async (sql, params = []) => {
   if (!db) await init();
   try {
     const stmt = db.prepare(sql);
+    if (params && params.length > 0) {
+      stmt.bind(params);
+    }
     const results = [];
     while (stmt.step()) {
       results.push(stmt.getAsObject());
