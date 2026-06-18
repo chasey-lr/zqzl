@@ -302,7 +302,8 @@ npm start
     "description": "投票描述",
     "options": [
       {
-        "_id": "选项ID",
+        "_id": "子文档ID",
+        "optionId": "选项唯一标识",
         "text": "选项文本",
         "votes": 10,
         "color": "#3B82F6"
@@ -355,10 +356,15 @@ npm start
   {
     "title": "新主题",
     "description": "新描述",
-    "options": ["选项1", "选项2", "新选项"]
+    "options": [
+      { "optionId": "已有选项的optionId", "text": "修改后的文本" },
+      { "optionId": "已有选项的optionId", "text": "选项2" },
+      { "text": "新选项文本" }
+    ]
   }
   ```
-  - 注意：已有票数的选项只能修改文本，不能删除
+  - `options` 中每个元素可带 `optionId`（已有选项）或不带（新增选项）
+  - 已有票数的选项只能修改文本，不能删除（省略其 optionId 视为删除）
 - **返回**: 更新后的投票详情
 
 #### 6. 删除投票
@@ -381,10 +387,10 @@ npm start
 - **请求体**:
   ```json
   {
-    "optionIndex": 0
+    "optionId": "选项的唯一optionId"
   }
   ```
-  - `optionIndex` (number, 必填): 选中的选项索引
+  - `optionId` (string, 必填): 选中的选项唯一标识（从投票详情接口的 options 数组中获取）
 - **返回**: 更新后的投票详情
 
 #### 8. 提前结束投票

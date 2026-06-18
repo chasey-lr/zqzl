@@ -58,6 +58,7 @@ describe('POST /api/polls - 创建投票', () => {
     expect(res.body.options.length).toBe(3);
     expect(res.body.options[0].text).toBe('选项A');
     expect(res.body.options[0].votes).toBe(0);
+    expect(res.body.options[0].optionId).toBeDefined();
     expect(res.body.type).toBe('public');
     expect(res.body.creator.toString()).toBe(userId.toString());
     expect(res.body.totalVotes).toBe(0);
@@ -148,7 +149,7 @@ describe('POST /api/polls - 创建投票', () => {
     expect(res.statusCode).toBe(400);
   });
 
-  it('每个选项应该有随机颜色', async () => {
+  it('每个选项应该有随机颜色和唯一optionId', async () => {
     const res = await request(app)
       .post('/api/polls')
       .set('Authorization', `Bearer ${token}`)
@@ -161,12 +162,18 @@ describe('POST /api/polls - 创建投票', () => {
     res.body.options.forEach(option => {
       expect(option.color).toBeDefined();
       expect(option.color).toMatch(/^#[0-9A-Fa-f]{6}$/);
+      expect(option.optionId).toBeDefined();
+      expect(typeof option.optionId).toBe('string');
     });
+    const optionIds = res.body.options.map(o => o.optionId);
+    const uniqueIds = new Set(optionIds);
+    expect(uniqueIds.size).toBe(optionIds.length);
   });
 });
 
 describe('POST /api/polls/:id/vote - 投票', () => {
   let pollId;
+  let optionIds;
 
   beforeEach(async () => {
     const pollRes = await request(app)
@@ -178,24 +185,25 @@ describe('POST /api/polls/:id/vote - 投票', () => {
         type: 'public'
       });
     pollId = pollRes.body._id;
+    optionIds = pollRes.body.options.map(o => o.optionId);
   });
 
   it('应该成功投票给一个选项', async () => {
     const res = await request(app)
       .post(`/api/polls/${pollId}/vote`)
       .set('Authorization', `Bearer ${token}`)
-      .send({ optionIndex: 1 });
+      .send({ optionId: optionIds[1] });
 
     expect(res.statusCode).toBe(200);
     expect(res.body.options[1].votes).toBe(1);
     expect(res.body.totalVotes).toBe(1);
-    expect(res.body.userVote.optionIndex).toBe(1);
+    expect(res.body.userVote.optionId).toBe(optionIds[1]);
   });
 
   it('未登录用户投票应该返回401', async () => {
     const res = await request(app)
       .post(`/api/polls/${pollId}/vote`)
-      .send({ optionIndex: 0 });
+      .send({ optionId: optionIds[0] });
 
     expect(res.statusCode).toBe(401);
   });
@@ -205,16 +213,16 @@ describe('POST /api/polls/:id/vote - 投票', () => {
     const res = await request(app)
       .post(`/api/polls/${fakeId}/vote`)
       .set('Authorization', `Bearer ${token}`)
-      .send({ optionIndex: 0 });
+      .send({ optionId: optionIds[0] });
 
     expect(res.statusCode).toBe(404);
   });
 
-  it('无效的选项索引应该返回400', async () => {
+  it('无效的optionId应该返回400', async () => {
     const res = await request(app)
       .post(`/api/polls/${pollId}/vote`)
       .set('Authorization', `Bearer ${token}`)
-      .send({ optionIndex: 10 });
+      .send({ optionId: 'invalid-option-id' });
 
     expect(res.statusCode).toBe(400);
     expect(res.body.message).toBe('无效的选项');
@@ -224,18 +232,18 @@ describe('POST /api/polls/:id/vote - 投票', () => {
     await request(app)
       .post(`/api/polls/${pollId}/vote`)
       .set('Authorization', `Bearer ${token}`)
-      .send({ optionIndex: 0 });
+      .send({ optionId: optionIds[0] });
 
     const res = await request(app)
       .post(`/api/polls/${pollId}/vote`)
       .set('Authorization', `Bearer ${token}`)
-      .send({ optionIndex: 2 });
+      .send({ optionId: optionIds[2] });
 
     expect(res.statusCode).toBe(200);
     expect(res.body.options[0].votes).toBe(0);
     expect(res.body.options[2].votes).toBe(1);
     expect(res.body.totalVotes).toBe(1);
-    expect(res.body.userVote.optionIndex).toBe(2);
+    expect(res.body.userVote.optionId).toBe(optionIds[2]);
   });
 
   it('同一用户多次投票总票数不增加', async () => {
@@ -243,7 +251,7 @@ describe('POST /api/polls/:id/vote - 投票', () => {
       await request(app)
         .post(`/api/polls/${pollId}/vote`)
         .set('Authorization', `Bearer ${token}`)
-        .send({ optionIndex: i % 3 });
+        .send({ optionId: optionIds[i % 3] });
     }
 
     const res = await request(app)
@@ -261,7 +269,7 @@ describe('POST /api/polls/:id/vote - 投票', () => {
     const res = await request(app)
       .post(`/api/polls/${pollId}/vote`)
       .set('Authorization', `Bearer ${token}`)
-      .send({ optionIndex: 0 });
+      .send({ optionId: optionIds[0] });
 
     expect(res.statusCode).toBe(400);
     expect(res.body.message).toBe('投票已结束');
@@ -285,12 +293,97 @@ describe('POST /api/polls/:id/vote - 投票', () => {
         password: '123456'
       });
 
+    const privateOptionIds = privatePollRes.body.options.map(o => o.optionId);
+
     const res = await request(app)
       .post(`/api/polls/${privatePollRes.body._id}/vote`)
       .set('Authorization', `Bearer ${anotherUserRes.body.token}`)
-      .send({ optionIndex: 0 });
+      .send({ optionId: privateOptionIds[0] });
 
     expect(res.statusCode).toBe(403);
     expect(res.body.message).toBe('您没有权限参与此投票');
+  });
+});
+
+describe('PUT /api/polls/:id - 编辑投票', () => {
+  let pollId;
+  let optionIds;
+
+  beforeEach(async () => {
+    const pollRes = await request(app)
+      .post('/api/polls')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        title: '编辑测试',
+        options: ['选项A', '选项B', '选项C'],
+        type: 'public'
+      });
+    pollId = pollRes.body._id;
+    optionIds = pollRes.body.options.map(o => o.optionId);
+  });
+
+  it('应该按optionId匹配更新选项文本', async () => {
+    await request(app)
+      .post(`/api/polls/${pollId}/vote`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ optionId: optionIds[0] });
+
+    const res = await request(app)
+      .put(`/api/polls/${pollId}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        title: '编辑后的标题',
+        options: [
+          { optionId: optionIds[0], text: '修改后的选项A' },
+          { optionId: optionIds[1], text: '选项B' },
+          { optionId: optionIds[2], text: '选项C' }
+        ]
+      });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body.title).toBe('编辑后的标题');
+    expect(res.body.options[0].text).toBe('修改后的选项A');
+    expect(res.body.options[0].votes).toBe(1);
+    expect(res.body.options[0].optionId).toBe(optionIds[0]);
+  });
+
+  it('删除有票数的选项应该返回400', async () => {
+    await request(app)
+      .post(`/api/polls/${pollId}/vote`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ optionId: optionIds[0] });
+
+    const res = await request(app)
+      .put(`/api/polls/${pollId}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        options: [
+          { optionId: optionIds[1], text: '选项B' },
+          { optionId: optionIds[2], text: '选项C' }
+        ]
+      });
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body.message).toBe('已有人投票的选项不可删除');
+  });
+
+  it('应该能添加新选项', async () => {
+    const res = await request(app)
+      .put(`/api/polls/${pollId}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        options: [
+          { optionId: optionIds[0], text: '选项A' },
+          { optionId: optionIds[1], text: '选项B' },
+          { optionId: optionIds[2], text: '选项C' },
+          { text: '新选项D' }
+        ]
+      });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body.options.length).toBe(4);
+    expect(res.body.options[3].text).toBe('新选项D');
+    expect(res.body.options[3].optionId).toBeDefined();
+    expect(res.body.options[3].votes).toBe(0);
   });
 });

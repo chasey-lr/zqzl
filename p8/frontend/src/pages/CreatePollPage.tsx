@@ -4,10 +4,18 @@ import api from '../utils/api';
 import { useError } from '../context/ErrorContext';
 import { generateRandomColor } from '../utils/date';
 
+interface OptionEntry {
+  text: string;
+  color: string;
+}
+
 const CreatePollPage: React.FC = () => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [options, setOptions] = useState(['', '']);
+  const [options, setOptions] = useState<OptionEntry[]>([
+    { text: '', color: generateRandomColor() },
+    { text: '', color: generateRandomColor() }
+  ]);
   const [type, setType] = useState<'public' | 'private'>('public');
   const [invitedEmails, setInvitedEmails] = useState<string[]>(['']);
   const [deadline, setDeadline] = useState(() => {
@@ -21,7 +29,7 @@ const CreatePollPage: React.FC = () => {
 
   const addOption = () => {
     if (options.length < 8) {
-      setOptions([...options, '']);
+      setOptions([...options, { text: '', color: generateRandomColor() }]);
     }
   };
 
@@ -33,7 +41,7 @@ const CreatePollPage: React.FC = () => {
 
   const updateOption = (index: number, value: string) => {
     const newOptions = [...options];
-    newOptions[index] = value;
+    newOptions[index] = { ...newOptions[index], text: value };
     setOptions(newOptions);
   };
 
@@ -56,7 +64,7 @@ const CreatePollPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const validOptions = options.filter(o => o.trim().length > 0);
+    const validOptions = options.filter(o => o.text.trim().length > 0);
     if (validOptions.length < 2) {
       showError('至少需要2个有效选项');
       return;
@@ -73,7 +81,7 @@ const CreatePollPage: React.FC = () => {
       const pollData: any = {
         title: title.trim(),
         description: description.trim(),
-        options: validOptions,
+        options: validOptions.map(o => o.text),
         type,
         deadline: new Date(deadline).toISOString(),
       };
@@ -135,11 +143,11 @@ const CreatePollPage: React.FC = () => {
               <div key={index} className="option-item">
                 <div
                   className="option-color-dot"
-                  style={{ backgroundColor: generateRandomColor() }}
+                  style={{ backgroundColor: option.color }}
                 />
                 <input
                   type="text"
-                  value={option}
+                  value={option.text}
                   onChange={(e) => updateOption(index, e.target.value)}
                   placeholder={`选项 ${index + 1}`}
                   maxLength={30}

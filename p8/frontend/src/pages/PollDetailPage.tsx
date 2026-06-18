@@ -15,7 +15,7 @@ const PollDetailPage: React.FC = () => {
   const [commentText, setCommentText] = useState('');
   const [loading, setLoading] = useState(true);
   const [voting, setVoting] = useState(false);
-  const [selectedOption, setSelectedOption] = useState<number | null>(null);
+  const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [isChanging, setIsChanging] = useState(false);
   const [consecutiveErrors, setConsecutiveErrors] = useState(0);
   const [pollingPaused, setPollingPaused] = useState(false);
@@ -130,7 +130,7 @@ const PollDetailPage: React.FC = () => {
 
     setVoting(true);
     try {
-      const response = await api.post(`/polls/${id}/vote`, { optionIndex: selectedOption });
+      const response = await api.post(`/polls/${id}/vote`, { optionId: selectedOption });
       setPoll(response.data);
       setIsChanging(false);
       setSelectedOption(null);
@@ -281,17 +281,17 @@ const PollDetailPage: React.FC = () => {
           <div className="vote-options">
             <p className="vote-hint">请选择一个选项：</p>
             <div className="options-list">
-              {poll.options.map((option, index) => (
+              {poll.options.map((option) => (
                 <div
-                  key={index}
-                  className={`vote-option ${selectedOption === index ? 'selected' : ''}`}
-                  onClick={() => setSelectedOption(index)}
+                  key={option.optionId}
+                  className={`vote-option ${selectedOption === option.optionId ? 'selected' : ''}`}
+                  onClick={() => setSelectedOption(option.optionId)}
                 >
                   <div
                     className="option-radio"
                     style={{ borderColor: option.color }}
                   >
-                    {selectedOption === index && (
+                    {selectedOption === option.optionId && (
                       <div
                         className="option-radio-inner"
                         style={{ backgroundColor: option.color }}
@@ -319,7 +319,7 @@ const PollDetailPage: React.FC = () => {
                   className="btn btn-secondary btn-sm"
                   onClick={() => {
                     setIsChanging(true);
-                    setSelectedOption(poll.userVote?.optionIndex || null);
+                    setSelectedOption(poll.userVote?.optionId || null);
                   }}
                 >
                   更改投票
@@ -331,17 +331,17 @@ const PollDetailPage: React.FC = () => {
               <div className="change-vote-section">
                 <p className="vote-hint">请重新选择：</p>
                 <div className="options-list">
-                  {poll.options.map((option, index) => (
+                  {poll.options.map((option) => (
                     <div
-                      key={index}
-                      className={`vote-option ${selectedOption === index ? 'selected' : ''}`}
-                      onClick={() => setSelectedOption(index)}
+                      key={option.optionId}
+                      className={`vote-option ${selectedOption === option.optionId ? 'selected' : ''}`}
+                      onClick={() => setSelectedOption(option.optionId)}
                     >
                       <div
                         className="option-radio"
                         style={{ borderColor: option.color }}
                       >
-                        {selectedOption === index && (
+                        {selectedOption === option.optionId && (
                           <div
                             className="option-radio-inner"
                             style={{ backgroundColor: option.color }}
@@ -375,13 +375,13 @@ const PollDetailPage: React.FC = () => {
 
             {!isChanging && (
               <div className="progress-bars">
-                {poll.options.map((option, index) => {
+                {poll.options.map((option) => {
                   const percentage = poll.totalVotes > 0
                     ? (option.votes / poll.totalVotes) * 100
                     : 0;
                   return (
                     <ProgressBar
-                      key={index}
+                      key={option.optionId}
                       text={option.text}
                       votes={option.votes}
                       percentage={percentage}

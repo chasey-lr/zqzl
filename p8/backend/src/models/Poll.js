@@ -1,6 +1,16 @@
 const mongoose = require('mongoose');
+const { v4: uuidv4 } = require('crypto');
+
+const generateOptionId = () => {
+  return Math.random().toString(36).substring(2, 10) + Date.now().toString(36);
+};
 
 const optionSchema = new mongoose.Schema({
+  optionId: {
+    type: String,
+    required: true,
+    default: generateOptionId
+  },
   text: {
     type: String,
     required: true,
@@ -22,8 +32,8 @@ const voteRecordSchema = new mongoose.Schema({
     ref: 'User',
     required: true
   },
-  optionIndex: {
-    type: Number,
+  optionId: {
+    type: String,
     required: true
   },
   votedAt: {

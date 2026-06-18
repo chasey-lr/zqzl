@@ -7,6 +7,7 @@ export interface User {
 
 export interface PollOption {
   _id?: string;
+  optionId: string;
   text: string;
   votes: number;
   color: string;
@@ -14,7 +15,7 @@ export interface PollOption {
 
 export interface VoteRecord {
   userId: string | null;
-  optionIndex: number;
+  optionId: string;
   votedAt: string;
   user?: User;
 }
@@ -91,8 +92,13 @@ export interface CreatePollData {
   deadline?: string;
 }
 
+export interface UpdatePollOption {
+  optionId?: string;
+  text: string;
+}
+
 export interface UpdatePollData {
   title?: string;
   description?: string;
-  options?: string[];
+  options?: UpdatePollOption[];
 }

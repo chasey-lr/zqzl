@@ -10,6 +10,10 @@ const generateRandomColor = () => {
   return colors[Math.floor(Math.random() * colors.length)];
 };
 
+const generateOptionId = () => {
+  return Math.random().toString(36).substring(2, 10) + Date.now().toString(36);
+};
+
 const getPolls = async (req, res) => {
   try {
     const { status = 'all', search = '', page = 1, limit = 6 } = req.query;
@@ -134,8 +138,9 @@ const getPollById = async (req, res) => {
         userId: null
       }));
     } else {
-      const voterIds = pollObj.voteRecords.map(r => r.userId);
-      const voters = await User.find({ _id: { $in: voterIds } }, 'nickname email avatar');
+      const voterIds = pollObj.voteRecords.map(r => r.userId).filter(Boolean);
+      const uniqueVoterIds = [...new Set(voterIds.map(id => id.toString()))];
+      const voters = await User.find({ _id: { $in: uniqueVoterIds } }, 'nickname email avatar');
       const voterMap = {};
       voters.forEach(v => {
         voterMap[v._id.toString()] = v;
@@ -161,6 +166,7 @@ const createPoll = async (req, res) => {
     }
 
     const coloredOptions = options.map(text => ({
+      optionId: generateOptionId(),
       text,
       votes: 0,
       color: generateRandomColor()
@@ -216,26 +222,33 @@ const updatePoll = async (req, res) => {
         return res.status(400).json({ message: '选项数量需在2-8个之间' });
       }
 
-      const existingOptions = poll.options;
-      const newOptions = [];
+      const existingOptionsMap = {};
+      poll.options.forEach(opt => {
+        existingOptionsMap[opt.optionId] = opt;
+      });
 
-      for (let i = 0; i < options.length; i++) {
-        if (i < existingOptions.length) {
-          if (existingOptions[i].votes > 0 && !options[i]) {
-            return res.status(400).json({ message: '已有人投票的选项不可删除' });
-          }
-          newOptions.push({
-            ...existingOptions[i].toObject(),
-            text: options[i] || existingOptions[i].text
-          });
-        } else {
-          newOptions.push({
-            text: options[i],
-            votes: 0,
-            color: generateRandomColor()
-          });
+      const optionIdsInUpdate = options.filter(o => o.optionId).map(o => o.optionId);
+      for (const existingOpt of poll.options) {
+        if (existingOpt.votes > 0 && !optionIdsInUpdate.includes(existingOpt.optionId)) {
+          return res.status(400).json({ message: '已有人投票的选项不可删除' });
         }
       }
+
+      const newOptions = options.map(opt => {
+        if (opt.optionId && existingOptionsMap[opt.optionId]) {
+          const existing = existingOptionsMap[opt.optionId];
+          return {
+            ...existing.toObject(),
+            text: opt.text || existing.text
+          };
+        }
+        return {
+          optionId: generateOptionId(),
+          text: opt.text,
+          votes: 0,
+          color: generateRandomColor()
+        };
+      });
 
       poll.options = newOptions;
     }
@@ -272,7 +285,7 @@ const deletePoll = async (req, res) => {
 const votePoll = async (req, res) => {
   try {
     const { id } = req.params;
-    const { optionIndex } = req.body;
+    const { optionId } = req.body;
 
     const poll = await Poll.findById(id);
     if (!poll) {
@@ -291,7 +304,8 @@ const votePoll = async (req, res) => {
       }
     }
 
-    if (optionIndex < 0 || optionIndex >= poll.options.length) {
+    const targetOption = poll.options.find(o => o.optionId === optionId);
+    if (!targetOption) {
       return res.status(400).json({ message: '无效的选项' });
     }
 
@@ -301,17 +315,20 @@ const votePoll = async (req, res) => {
     );
 
     if (existingVoteIndex !== -1) {
-      const oldOptionIndex = poll.voteRecords[existingVoteIndex].optionIndex;
-      poll.options[oldOptionIndex].votes -= 1;
-      poll.options[optionIndex].votes += 1;
-      poll.voteRecords[existingVoteIndex].optionIndex = optionIndex;
+      const oldOptionId = poll.voteRecords[existingVoteIndex].optionId;
+      const oldOption = poll.options.find(o => o.optionId === oldOptionId);
+      if (oldOption) {
+        oldOption.votes -= 1;
+      }
+      targetOption.votes += 1;
+      poll.voteRecords[existingVoteIndex].optionId = optionId;
       poll.voteRecords[existingVoteIndex].votedAt = new Date();
     } else {
-      poll.options[optionIndex].votes += 1;
+      targetOption.votes += 1;
       poll.totalVotes += 1;
       poll.voteRecords.push({
         userId,
-        optionIndex,
+        optionId,
         votedAt: new Date()
       });
     }

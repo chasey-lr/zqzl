@@ -4,12 +4,18 @@ import api from '../utils/api';
 import { useError } from '../context/ErrorContext';
 import { Poll } from '../types';
 
+interface EditOption {
+  optionId?: string;
+  text: string;
+  votes: number;
+  color: string;
+}
+
 const EditPollPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [options, setOptions] = useState<string[]>([]);
-  const [originalOptions, setOriginalOptions] = useState<{ text: string; votes: number }[]>([]);
+  const [options, setOptions] = useState<EditOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const { showError } = useError();
@@ -22,9 +28,12 @@ const EditPollPage: React.FC = () => {
         const poll = response.data;
         setTitle(poll.title);
         setDescription(poll.description);
-        const optionTexts = poll.options.map(o => o.text);
-        setOptions(optionTexts);
-        setOriginalOptions(poll.options.map(o => ({ text: o.text, votes: o.votes })));
+        setOptions(poll.options.map(o => ({
+          optionId: o.optionId,
+          text: o.text,
+          votes: o.votes,
+          color: o.color
+        })));
       } catch (err: any) {
         showError(err.response?.data?.message || '获取投票信息失败');
         navigate('/');
@@ -38,30 +47,40 @@ const EditPollPage: React.FC = () => {
 
   const addOption = () => {
     if (options.length < 8) {
-      setOptions([...options, '']);
+      const colors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4', '#84CC16'];
+      setOptions([...options, {
+        text: '',
+        votes: 0,
+        color: colors[Math.floor(Math.random() * colors.length)]
+      }]);
     }
   };
 
-  const removeOption = (index: number) => {
-    if (index < originalOptions.length && originalOptions[index].votes > 0) {
+  const removeOption = (optionId: string | undefined) => {
+    if (!optionId) {
+      setOptions(options.filter(o => o.optionId !== optionId));
+      return;
+    }
+    const target = options.find(o => o.optionId === optionId);
+    if (target && target.votes > 0) {
       showError('已有人投票的选项不可删除');
       return;
     }
     if (options.length > 2) {
-      setOptions(options.filter((_, i) => i !== index));
+      setOptions(options.filter(o => o.optionId !== optionId));
     }
   };
 
-  const updateOption = (index: number, value: string) => {
-    const newOptions = [...options];
-    newOptions[index] = value;
-    setOptions(newOptions);
+  const updateOption = (optionId: string | undefined, value: string) => {
+    setOptions(options.map(o =>
+      o.optionId === optionId ? { ...o, text: value } : o
+    ));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const validOptions = options.filter(o => o.trim().length > 0);
+    const validOptions = options.filter(o => o.text.trim().length > 0);
     if (validOptions.length < 2) {
       showError('至少需要2个有效选项');
       return;
@@ -72,9 +91,9 @@ const EditPollPage: React.FC = () => {
       return;
     }
 
-    for (let i = 0; i < originalOptions.length; i++) {
-      if (originalOptions[i].votes > 0 && !options[i]) {
-        showError('已有人投票的选项不可删除');
+    for (const opt of options) {
+      if (opt.optionId && opt.votes > 0 && !opt.text.trim()) {
+        showError('已有人投票的选项文本不能为空');
         return;
       }
     }
@@ -85,7 +104,10 @@ const EditPollPage: React.FC = () => {
       await api.put(`/polls/${id}`, {
         title: title.trim(),
         description: description.trim(),
-        options: validOptions,
+        options: validOptions.map(o => ({
+          optionId: o.optionId,
+          text: o.text.trim()
+        })),
       });
       navigate(`/poll/${id}`);
     } catch (err: any) {
@@ -141,39 +163,36 @@ const EditPollPage: React.FC = () => {
             注意：已有票数的选项只能修改文本，不能删除
           </p>
           <div className="options-list">
-            {options.map((option, index) => {
-              const hasVotes = index < originalOptions.length && originalOptions[index].votes > 0;
-              return (
-                <div key={index} className="option-item">
-                  <div
-                    className="option-color-dot"
-                    style={{ backgroundColor: '#3B82F6' }}
-                  />
-                  <input
-                    type="text"
-                    value={option}
-                    onChange={(e) => updateOption(index, e.target.value)}
-                    placeholder={`选项 ${index + 1}`}
-                    maxLength={30}
-                    className="form-input option-input"
-                  />
-                  {hasVotes && (
-                    <span className="votes-badge">
-                      {originalOptions[index].votes}票
-                    </span>
-                  )}
-                  {!hasVotes && options.length > 2 && (
-                    <button
-                      type="button"
-                      onClick={() => removeOption(index)}
-                      className="btn-remove"
-                    >
-                      删除
-                    </button>
-                  )}
-                </div>
-              );
-            })}
+            {options.map((option) => (
+              <div key={option.optionId || `new-${Math.random()}`} className="option-item">
+                <div
+                  className="option-color-dot"
+                  style={{ backgroundColor: option.color }}
+                />
+                <input
+                  type="text"
+                  value={option.text}
+                  onChange={(e) => updateOption(option.optionId, e.target.value)}
+                  placeholder="选项文本"
+                  maxLength={30}
+                  className="form-input option-input"
+                />
+                {option.votes > 0 && (
+                  <span className="votes-badge">
+                    {option.votes}票
+                  </span>
+                )}
+                {option.votes === 0 && options.length > 2 && (
+                  <button
+                    type="button"
+                    onClick={() => removeOption(option.optionId)}
+                    className="btn-remove"
+                  >
+                    删除
+                  </button>
+                )}
+              </div>
+            ))}
           </div>
           {options.length < 8 && (
             <button type="button" onClick={addOption} className="btn-add">
