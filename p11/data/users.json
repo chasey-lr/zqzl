@@ -1,0 +1,12 @@
+[
+  {
+    "id": 1,
+    "email": "alice@test.com",
+    "password": "$2a$10$8HT6/6EnFvX8RgSEvh8gPuziSe.lVDcLyWqIsP3bkPpMe6JkOc1gC"
+  },
+  {
+    "id": 2,
+    "email": "123@123",
+    "password": "$2a$10$FAi/bamUb23Nq21e6Jb1vuVar6Uwbm0a2w/2FPpsXY2zVGsr6gf52"
+  }
+]

@@ -4,6 +4,7 @@ let editingTodoId = null;
 
 const todoList = document.getElementById('todoList');
 const todoInput = document.getElementById('todoInput');
+const todoDescInput = document.getElementById('todoDescInput');
 const addBtn = document.getElementById('addBtn');
 const filterSelect = document.getElementById('filterSelect');
 const emptyState = document.getElementById('emptyState');
@@ -43,6 +44,7 @@ async function fetchTodos() {
 
 async function addTodo() {
   const title = todoInput.value.trim();
+  const description = todoDescInput.value.trim();
 
   if (!title) {
     alert('标题不能为空');
@@ -58,7 +60,7 @@ async function addTodo() {
     const response = await fetch('/api/todos', {
       method: 'POST',
       headers: getAuthHeaders(),
-      body: JSON.stringify({ title })
+      body: JSON.stringify({ title, description })
     });
 
     if (!response.ok) {
@@ -72,6 +74,7 @@ async function addTodo() {
     }
 
     todoInput.value = '';
+    todoDescInput.value = '';
     fetchTodos();
   } catch (error) {
     showError('操作失败，请重试');
@@ -152,8 +155,10 @@ function cancelEdit() {
 }
 
 async function saveEdit(id) {
-  const input = document.getElementById(`edit-input-${id}`);
-  const title = input.value.trim();
+  const titleInput = document.getElementById(`edit-input-${id}`);
+  const descInput = document.getElementById(`edit-desc-${id}`);
+  const title = titleInput.value.trim();
+  const description = descInput ? descInput.value.trim() : '';
 
   if (!title) {
     alert('标题不能为空');
@@ -166,7 +171,7 @@ async function saveEdit(id) {
   }
 
   const todo = todos.find(t => t.id === id);
-  if (todo && todo.title === title) {
+  if (todo && todo.title === title && todo.description === description) {
     cancelEdit();
     return;
   }
@@ -175,7 +180,7 @@ async function saveEdit(id) {
     const response = await fetch(`/api/todos/${id}`, {
       method: 'PUT',
       headers: getAuthHeaders(),
-      body: JSON.stringify({ title })
+      body: JSON.stringify({ title, description })
     });
 
     if (!response.ok) {
@@ -271,6 +276,7 @@ function renderTodos() {
           <input type="checkbox" class="todo-checkbox" disabled ${todo.completed ? 'checked' : ''}>
           <div class="edit-form">
             <input type="text" class="edit-input" id="edit-input-${todo.id}" value="${escapeHtml(todo.title)}" maxlength="100">
+            <textarea class="edit-textarea" id="edit-desc-${todo.id}" placeholder="描述（可选）">${escapeHtml(todo.description || '')}</textarea>
             <div class="edit-actions">
               <button class="save-btn" onclick="saveEdit(${todo.id})">保存</button>
               <button class="cancel-btn" onclick="cancelEdit()">取消</button>
@@ -302,7 +308,8 @@ function renderTodos() {
       input.focus();
       input.select();
       input.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
           saveEdit(editingTodoId);
         } else if (e.key === 'Escape') {
           cancelEdit();
@@ -329,7 +336,8 @@ function initUserInfo() {
 addBtn.addEventListener('click', addTodo);
 
 todoInput.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
     addTodo();
   }
 });

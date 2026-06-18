@@ -173,20 +173,43 @@ body {
 
 .add-todo-form {
   display: flex;
+  flex-direction: column;
   gap: 10px;
 }
 
 .add-todo-input {
-  flex: 1;
+  width: 100%;
   padding: 12px 16px;
   border: 1px solid #ddd;
   border-radius: 8px;
   font-size: 14px;
+  font-family: inherit;
 }
 
 .add-todo-input:focus {
   outline: none;
   border-color: #3498db;
+}
+
+.add-todo-textarea {
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 14px;
+  resize: vertical;
+  min-height: 60px;
+  font-family: inherit;
+}
+
+.add-todo-textarea:focus {
+  outline: none;
+  border-color: #3498db;
+}
+
+.add-todo-actions {
+  display: flex;
+  justify-content: flex-end;
 }
 
 .add-btn {
@@ -339,9 +362,25 @@ body {
   border: 1px solid #3498db;
   border-radius: 6px;
   font-size: 14px;
+  font-family: inherit;
 }
 
 .edit-input:focus {
+  outline: none;
+}
+
+.edit-textarea {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #3498db;
+  border-radius: 6px;
+  font-size: 14px;
+  resize: vertical;
+  min-height: 60px;
+  font-family: inherit;
+}
+
+.edit-textarea:focus {
   outline: none;
 }
 
